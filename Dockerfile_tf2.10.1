@@ -1,0 +1,127 @@
+FROM tensorflow/tensorflow:2.10.1-gpu
+MAINTAINER Simone Riggi "simone.riggi@gmail.com"
+
+## NB: Base container 2.10.1-gpu uses CUDA 11.2
+
+######################################
+##   DEFINE CUSTOMIZABLE ARGS/ENVS
+######################################
+ARG USER_ARG=caesar
+ENV USER $USER_ARG
+
+ARG CHANGE_RUNUSER_ARG=1
+ENV CHANGE_RUNUSER $CHANGE_RUNUSER_ARG
+
+# - CAESAR OPTIONS
+ARG JOB_OPTIONS_ARG=""
+ENV JOB_OPTIONS $JOB_OPTIONS_ARG
+
+ARG INPUTFILE_ARG=""
+ENV INPUTFILE $INPUTFILE_ARG
+
+ARG JOB_DIR_ARG=""
+ENV JOB_DIR $JOB_DIR_ARG
+
+ARG JOB_OUTDIR_ARG=""
+ENV JOB_OUTDIR $JOB_OUTDIR_ARG
+
+# - RCLONE OPTIONS
+ARG MOUNT_RCLONE_VOLUME_ARG=0
+ENV MOUNT_RCLONE_VOLUME $MOUNT_RCLONE_VOLUME_ARG
+
+ARG MOUNT_VOLUME_PATH_ARG="/mnt/storage"
+ENV MOUNT_VOLUME_PATH $MOUNT_VOLUME_PATH_ARG
+
+ARG RCLONE_REMOTE_STORAGE_ARG="neanias-nextcloud"
+ENV RCLONE_REMOTE_STORAGE $RCLONE_REMOTE_STORAGE_ARG
+
+ARG RCLONE_REMOTE_STORAGE_PATH_ARG="."
+ENV RCLONE_REMOTE_STORAGE_PATH $RCLONE_REMOTE_STORAGE_PATH_ARG
+
+ARG RCLONE_MOUNT_WAIT_TIME_ARG=10
+ENV RCLONE_MOUNT_WAIT_TIME $RCLONE_MOUNT_WAIT_TIME_ARG
+
+ARG RCLONE_COPY_WAIT_TIME_ARG=30
+ENV RCLONE_COPY_WAIT_TIME $RCLONE_COPY_WAIT_TIME_ARG
+
+ENV PYTHONPATH_BASE ${PYTHONPATH}
+
+#################################
+###    CREATE DIRS
+#################################	
+# - Define env variables
+ENV SOFTDIR=/opt/software
+ENV SCLASSIFIER_SRC_DIR=${SOFTDIR}/sclassifier
+ENV SCLASSIFIER_URL=https://github.com/SKA-INAF/sclassifier.git
+	
+# - Create src dir	
+##RUN echo "Creating software dir $SOFTDIR ..."
+RUN mkdir -p ${SOFTDIR}
+
+##########################################################
+##     INSTALL SYS LIBS
+##########################################################
+# - Install OS packages
+RUN apt-get update && apt-get install -y software-properties-common curl bzip2 unzip nano build-essential libbz2-dev ffmpeg libsm6 libxext6 git openmpi-bin libopenmpi-dev fuse
+
+# - Install python & pip
+RUN apt-get install -y python3 python3-dev python3-pip
+RUN pip install -U pip
+
+##########################################################
+##     CREATE USER
+##########################################################
+# - Create user & set permissions
+RUN adduser --disabled-password --gecos "" $USER && \
+    mkdir -p /home/$USER && \
+    chown -R $USER:$USER /home/$USER
+    
+######################################
+##     INSTALL RCLONE
+######################################
+# - Allow other non-root users to mount fuse volumes
+RUN sed -i "s/#user_allow_other/user_allow_other/" /etc/fuse.conf
+
+# - Install rclone
+RUN curl https://rclone.org/install.sh | bash
+
+######################################
+##     INSTALL SCLASSIFIER
+######################################
+# - Install sclassifier dependencies
+RUN pip install "numpy<=1.22.4" "astropy>=2.0" "fitsio<=1.1.7" "scipy" "scikit-learn" "pyparsing<=2.4.7" "matplotlib" "six==1.15.0" "tensorflow_addons" "imgaug>=0.4.0" "umap-learn" "hdbscan" "seaborn" "scikit-image" "jedi<0.18.0" "ipython" "pydot" "graphviz" "lightgbm" "opencv-python" "mahotas" "imutils" "montage_wrapper" "scutout" "mpi4py" "optuna" "image-classifiers" "pandas"
+
+RUN pip install "fitsio==1.1.6" ## For some reason fitsio 1.1.7 clashed with numpy
+
+# - Install sclassifier from PyPi
+##RUN pip install -U sclassifier
+
+# - Download sclassifier from github repo
+WORKDIR ${SOFTDIR}
+RUN git clone ${SCLASSIFIER_URL}
+
+WORKDIR ${SCLASSIFIER_SRC_DIR}
+RUN git pull origin master
+
+# - Compile and install
+WORKDIR ${SCLASSIFIER_SRC_DIR}
+RUN python setup.py build && python setup.py install
+
+ENV PYTHONPATH=/usr/lib/python3.8/site-packages/
+
+######################################
+##     RUN
+######################################
+# - Copy run script
+COPY run_job.sh /home/$USER/run_job.sh
+RUN chmod +x /home/$USER/run_job.sh
+
+COPY run_classifier.sh /home/$USER/run_classifier.sh
+RUN chmod +x /home/$USER/run_classifier.sh
+
+# - Add dir to PATH
+ENV PATH ${PATH}:/home/$USER
+
+# - Run container
+CMD ["sh","-c","/home/$USER/run_job.sh --runuser=$USER --change-runuser=$CHANGE_RUNUSER --jobargs=\"$JOB_OPTIONS\" --inputfile=$INPUTFILE --jobdir=$JOB_DIR --joboutdir=$JOB_OUTDIR --mount-rclone-volume=$MOUNT_RCLONE_VOLUME --mount-volume-path=$MOUNT_VOLUME_PATH --rclone-remote-storage=$RCLONE_REMOTE_STORAGE --rclone-remote-storage-path=$RCLONE_REMOTE_STORAGE_PATH --rclone-mount-wait=$RCLONE_MOUNT_WAIT_TIME --rclone-copy-wait=$RCLONE_COPY_WAIT_TIME"]
+
