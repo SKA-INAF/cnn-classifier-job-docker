@@ -21,7 +21,40 @@ if [ "$NARGS" -lt 1 ]; then
 	echo "=========================="
 	echo "*** MANDATORY ARGS ***"
 	echo "--inputfile=[FILENAME] - Input file name (.json) containing images to be processed."
+	
 	echo ""
+
+	echo "*** OPTIONAL ARGS ***"
+	echo "=== MODEL OPTIONS ==="
+	echo "--model=[MODEL] - Classifier model to be used in prediction. Options are {smorph-rgz}. Default: smorph-rgz"
+	echo ""
+	
+	echo "=== PRE-PROCESSING OPTIONS ==="
+	echo "--imgsize=[IMGSIZE] - Size in pixels used for image resize"
+	echo "--normalize_minmax - Apply minmax normalization to images "
+	echo "--norm_min=[NORM_MIN] - Normalization min value (default=0)"
+	echo "--norm_max=[NORM_MAX] - Normalization max value (default=1)"
+	echo "--scale_to_abs_max - Scale each image channel by absolute maximum value across all channels "
+	echo "--scale_to_max - Scale each image channel by its maximum value"
+	echo "--zscale_stretch - Apply zscale transform to each image channel"
+	echo "--zscale_contrasts=[CONTRASTS] - zscale transform contrast parameters (separated by commas) (default=0.25)"
+	echo "--clip_data - Apply sigma clipping to each image channel"
+	echo "--sigma_clip_low=[SIGMA_CLIP_LOW] - Min sigma clipping value (default=5)"
+	echo "--sigma_clip_up=[SIGMA_CLIP_UP] - Max sigma clipping value (default=30)"
+	echo "--clip_chid=[SIGMA_CHID] - Channel used to apply clipping (-1=all channels) (default=-1)"
+	echo "--standardize - Apply standardization to images"
+	echo "--img_means=[IMG_MEANS] - Image channel means (default=0)"
+	echo "--img_sigmas=[IMG_SIGMAS] - Image channel sigmas (default=1)"
+			
+	echo ""
+	
+	echo "=== RUN OPTIONS ==="
+	echo "--run - Run the generated run script on the local shell. If disabled only run script will be generated for later run."	
+	echo "--jobdir=[JOB_DIR] - Job directory where to run (default=pwd)"
+	echo "--outdir=[OUTPUT_DIR] - Output directory where to put run output file (default=pwd)"
+	echo "--waitcopy - Wait a bit after copying output files to output dir (default=no)"
+	echo "--copywaittime=[COPY_WAIT_TIME] - Time to wait after copying output files (default=30)"
+	echo "--no-logredir - Do not redirect logs to output file in script "	
 	
 	echo "=========================="
   exit 1
@@ -36,6 +69,8 @@ export OUTPUT_DIR="$PWD"
 
 DATALIST=""
 DATALIST_GIVEN=false
+
+RUN_SCRIPT=false
 WAIT_COPY=false
 COPY_WAIT_TIME=30
 REDIRECT_LOGS=true
@@ -70,6 +105,9 @@ do
     ;;
     
     ## OPTIONAL ##
+    --run*)
+    	RUN_SCRIPT=true
+    ;;
     --outdir=*)
     	OUTPUT_DIR=`echo $item | /bin/sed 's/[-a-zA-Z0-9]*=//'`
     ;;
