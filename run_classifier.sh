@@ -26,7 +26,7 @@ if [ "$NARGS" -lt 1 ]; then
 
 	echo "*** OPTIONAL ARGS ***"
 	echo "=== MODEL OPTIONS ==="
-	echo "--model=[MODEL] - Classifier model to be used in prediction. Options are {smorph-rgz}. Default: smorph-rgz"
+	echo "--model=[MODEL] - Classifier model to be used in prediction. Options are {smorphclass,sclass-radio_3.4um-4.6um-12um-22um}. Default: smorph"
 	echo ""
 	
 	echo "=== PRE-PROCESSING OPTIONS ==="
@@ -50,6 +50,8 @@ if [ "$NARGS" -lt 1 ]; then
 	
 	echo "=== RUN OPTIONS ==="
 	echo "--run - Run the generated run script on the local shell. If disabled only run script will be generated for later run."	
+	echo "--scriptdir=[SCRIPT_DIR] - Job directory where to find scripts (default=/usr/bin)"
+	echo "--modeldir=[MODEL_DIR] - Job directory where to find model & weight files (default=/opt/models)"
 	echo "--jobdir=[JOB_DIR] - Job directory where to run (default=pwd)"
 	echo "--outdir=[OUTPUT_DIR] - Output directory where to put run output file (default=pwd)"
 	echo "--waitcopy - Wait a bit after copying output files to output dir (default=no)"
@@ -64,8 +66,10 @@ fi
 #######################################
 ##         PARSE ARGS
 #######################################
-export BASEDIR="$PWD"
-export OUTPUT_DIR="$PWD"
+JOB_DIR=""
+JOB_OUTDIR=""
+SCRIPT_DIR="/usr/bin"
+MODEL_DIR="/opt/models"
 
 DATALIST=""
 DATALIST_GIVEN=false
@@ -75,7 +79,7 @@ WAIT_COPY=false
 COPY_WAIT_TIME=30
 REDIRECT_LOGS=true
 
-MODEL="smorph-rgz"
+MODEL="smorphclass"
 
 IMGSIZE=64
 NORMALIZE_MINMAX=""
@@ -108,8 +112,14 @@ do
     --run*)
     	RUN_SCRIPT=true
     ;;
+    --scriptdir=*)
+    	SCRIPT_DIR=`echo $item | /bin/sed 's/[-a-zA-Z0-9]*=//'`
+    ;;
+    --modeldir=*)
+    	MODEL_DIR=`echo $item | /bin/sed 's/[-a-zA-Z0-9]*=//'`
+    ;;
     --outdir=*)
-    	OUTPUT_DIR=`echo $item | /bin/sed 's/[-a-zA-Z0-9]*=//'`
+    	JOB_OUTDIR=`echo $item | /bin/sed 's/[-a-zA-Z0-9]*=//'`
     ;;
 		--waitcopy*)
     	WAIT_COPY=true
@@ -118,7 +128,7 @@ do
     	COPY_WAIT_TIME=`echo $item | /bin/sed 's/[-a-zA-Z0-9]*=//'`
     ;;
     --jobdir=*)
-    	BASEDIR=`echo $item | /bin/sed 's/[-a-zA-Z0-9]*=//'`
+    	JOB_DIR=`echo $item | /bin/sed 's/[-a-zA-Z0-9]*=//'`
     ;;
     --no-logredir*)
 			REDIRECT_LOGS=false
@@ -190,14 +200,14 @@ if [ "$DATALIST_GIVEN" = false ]; then
   exit 1
 fi
 
-if [ "$BASEDIR" = "" ]; then
-  echo "WARN: Empty BASEDIR given, setting it to pwd ($PWD) ..."
-	BASEDIR="$PWD"
+if [ "$JOB_DIR" = "" ]; then
+  echo "WARN: Empty JOB_DIR given, setting it to pwd ($PWD) ..."
+	JOB_DIR="$PWD"
 fi
 
-if [ "$OUTPUT_DIR" = "" ]; then
-  echo "WARN: Empty OUTPUT_DIR given, setting it to pwd ($PWD) ..."
-	OUTPUT_DIR="$PWD"
+if [ "$JOB_OUTDIR" = "" ]; then
+  echo "WARN: Empty JOB_OUTDIR given, setting it to pwd ($PWD) ..."
+	JOB_OUTDIR="$PWD"
 fi
 
 
@@ -206,26 +216,26 @@ fi
 ##   SET CLASSIFIER OPTIONS
 #######################################
 PREPROC_OPTS="--resize_size=$IMGSIZE --upscale $NORMALIZE_MINMAX --norm_min=$NORM_MIN --norm_max=$NORM_MAX $SCALE_TO_ABS_MAX $SCALE_TO_MAX $ZSCALE_STRETCH --zscale_contrasts=$ZSCALE_CONTRASTS $CLIP_DATA --sigma_clip_low=$SIGMA_CLIP_LOW --sigma_clip_up=$SIGMA_CLIP_UP --clip_chid=$CLIP_CHID $STANDARDIZE --img_means=$IMG_MEANS --img_sigmas=$IMG_SIGMAS "
-			
-if [ "$MODEL" = "smorph-rgz" ]; then
-	CLASSID_REMAP='{0:-1,1:0,2:1,3:2,4:3,5:4,6:5}'
-	TARGET_LABEL_MAP='{0:"1C-1P",1:"1C-2P",2:"1C-3P",3:"2C-2P",4:"2C-3P",5:"3C-3P"}'
-	CLASSID_LABEL_MAP='{1:"1C-1P",2:"1C-2P",3:"1C-3P",4:"2C-2P",5:"2C-3P",6:"3C-3P"}'
-	TARGET_NAMES="1C-1P,1C-2P,1C-3P,2C-2P,2C-3P,3C-3P"
-	NCLASSES=6
-	
-	MODELFILE="/opt/models/model_cnn-rgz.h5"
-	WEIGHTFILE="/opt/models/weights_cnn-rgz.h5"
 
-elif [ "$MODEL" = "smorph-rgz" ]; then
+if [ "$MODEL" = "smorphclass" ]; then
 	CLASSID_REMAP='{0:-1,1:0,2:1,3:2,4:3,5:4,6:5}'
 	TARGET_LABEL_MAP='{0:"1C-1P",1:"1C-2P",2:"1C-3P",3:"2C-2P",4:"2C-3P",5:"3C-3P"}'
 	CLASSID_LABEL_MAP='{1:"1C-1P",2:"1C-2P",3:"1C-3P",4:"2C-2P",5:"2C-3P",6:"3C-3P"}'
 	TARGET_NAMES="1C-1P,1C-2P,1C-3P,2C-2P,2C-3P,3C-3P"
 	NCLASSES=6
 	
-	MODELFILE="/opt/models/model_cnn-rgz.h5"
-	WEIGHTFILE="/opt/models/weights_cnn-rgz.h5"
+	MODELFILE="$MODEL_DIR/cnn-smorphclass_rgz.h5"
+	WEIGHTFILE="$MODEL_DIR/weights-smorphclass_rgz.h5"
+
+elif [ "$MODEL" = "sclass-radio_3.4um-4.6um-12um-22um" ]; then
+	CLASSID_REMAP='{0:-1,1:4,2:5,3:0,6:1,23:2,24:3,6000:6}'
+	TARGET_LABEL_MAP='{-1:"UNKNOWN",0:"PN",1:"HII",2:"PULSAR",3:"YSO",4:"STAR",5:"GALAXY",6:"QSO"}'
+	CLASSID_LABEL_MAP='{0:"UNKNOWN",1:"STAR",2:"GALAXY",3:"PN",6:"HII",23:"PULSAR",24:"YSO",6000:"QSO"}'
+	TARGET_NAMES="PN","HII","PULSAR","YSO","STAR","GALAXY","QSO"
+	NCLASSES=7
+	
+	MODELFILE="$MODEL_DIR/cnn-sclass_radio-3.4um-4.6um-12um-22um.h5"
+	WEIGHTFILE="$MODEL_DIR/weights-sclass_radio-3.4um-4.6um-12um-22um.h5"
 	
 else 
 	echo "ERROR: Unknown/not supported MODEL argument $MODEL given!"
@@ -268,21 +278,27 @@ generate_exec_script(){
       echo 'echo "****         RUN CLASSIFIER                  ****"'
       echo 'echo "*************************************************"'
 				
-			EXE="python /usr/bin/run_classifier_nn.py" 
-			ARGS="--datalist=$DATALIST $PREPROC_OPTS $CLASS_OPTS --modelfile=$MODELFILE --weightfile=$WEIGHTFILE --predict"
+			EXE="python $SCRIPT_DIR/run_classifier_nn.py" 
+			ARGS="--predict --datalist=$DATALIST $PREPROC_OPTS --modelfile=$MODELFILE --weightfile=$WEIGHTFILE --objids_excluded_in_train=-1,0 --classid_remap=""'""$CLASSID_REMAP""'"" --target_label_map=""'""$TARGET_LABEL_MAP""'"" --classid_label_map=""'""$CLASSID_LABEL_MAP""'"" --target_names=""'""$TARGET_NAMES""'"" --nclasses=$NCLASSES"
 			CMD="$EXE $ARGS"
 
-			echo "echo \"INFO: Running classifier (CMD=$CMD) ...\""
+			echo "date"
+			echo ""
+		
+			echo "echo \"INFO: Running classifier ...\""
+			
 			if [ $REDIRECT_LOGS = true ]; then			
       	echo "$CMD >> $logfile 2>&1"
 			else
 				echo "$CMD"
       fi
-
+      
 			echo " "
 
 			echo 'JOB_STATUS=$?'
 			echo 'echo "Classifier terminated with status=$JOB_STATUS"'
+
+			echo "date"
 
 			echo " "
 
