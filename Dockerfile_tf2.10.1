@@ -53,10 +53,10 @@ ENV PYTHONPATH_BASE ${PYTHONPATH}
 ENV SOFTDIR=/opt/software
 ENV SCLASSIFIER_SRC_DIR=${SOFTDIR}/sclassifier
 ENV SCLASSIFIER_URL=https://github.com/SKA-INAF/sclassifier.git
+ENV MODEL_DIR=/opt/models
 	
 # - Create src dir	
-##RUN echo "Creating software dir $SOFTDIR ..."
-RUN mkdir -p ${SOFTDIR}
+RUN mkdir -p ${SOFTDIR} && mkdir -p ${MODEL_DIR}
 
 ##########################################################
 ##     INSTALL SYS LIBS
@@ -112,6 +112,9 @@ ENV PYTHONPATH=/usr/lib/python3.8/site-packages/
 ######################################
 ##     RUN
 ######################################
+# - Copy models
+COPY models/*.h5 ${MODEL_DIR}
+
 # - Copy run script
 COPY run_job.sh /home/$USER/run_job.sh
 RUN chmod +x /home/$USER/run_job.sh

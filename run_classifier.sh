@@ -31,20 +31,20 @@ if [ "$NARGS" -lt 1 ]; then
 	
 	echo "=== PRE-PROCESSING OPTIONS ==="
 	echo "--imgsize=[IMGSIZE] - Size in pixels used for image resize"
-	echo "--normalize_minmax - Apply minmax normalization to images "
-	echo "--norm_min=[NORM_MIN] - Normalization min value (default=0)"
-	echo "--norm_max=[NORM_MAX] - Normalization max value (default=1)"
-	echo "--scale_to_abs_max - Scale each image channel by absolute maximum value across all channels "
-	echo "--scale_to_max - Scale each image channel by its maximum value"
-	echo "--zscale_stretch - Apply zscale transform to each image channel"
+	echo "--normalize - Apply minmax normalization to images "
+	echo "--normmin=[NORM_MIN] - Normalization min value (default=0)"
+	echo "--normmax=[NORM_MAX] - Normalization max value (default=1)"
+	echo "--scale-absmax - Scale each image channel by absolute maximum value across all channels "
+	echo "--scale-max - Scale each image channel by its maximum value"
+	echo "--zscale - Apply zscale transform to each image channel"
 	echo "--zscale_contrasts=[CONTRASTS] - zscale transform contrast parameters (separated by commas) (default=0.25)"
-	echo "--clip_data - Apply sigma clipping to each image channel"
-	echo "--sigma_clip_low=[SIGMA_CLIP_LOW] - Min sigma clipping value (default=5)"
-	echo "--sigma_clip_up=[SIGMA_CLIP_UP] - Max sigma clipping value (default=30)"
-	echo "--clip_chid=[SIGMA_CHID] - Channel used to apply clipping (-1=all channels) (default=-1)"
+	echo "--sigmaclip - Apply sigma clipping to each image channel"
+	echo "--sigmaclip-low=[SIGMA_CLIP_LOW] - Min sigma clipping value (default=5)"
+	echo "--sigmaclip-up=[SIGMA_CLIP_UP] - Max sigma clipping value (default=30)"
+	echo "--sigmaclip-chid=[SIGMA_CHID] - Channel used to apply clipping (-1=all channels) (default=-1)"
 	echo "--standardize - Apply standardization to images"
-	echo "--img_means=[IMG_MEANS] - Image channel means (default=0)"
-	echo "--img_sigmas=[IMG_SIGMAS] - Image channel sigmas (default=1)"
+	echo "--means=[IMG_MEANS] - Image channel means (default=0)"
+	echo "--sigmas=[IMG_SIGMAS] - Image channel sigmas (default=1)"
 			
 	echo ""
 	
@@ -134,53 +134,52 @@ do
 			REDIRECT_LOGS=false
 		;;
     
-    
     --model=*)
     	MODEL=`echo $item | sed 's/[-a-zA-Z0-9]*=//'`
     ;;
     --imgsize=*)
     	IMGSIZE=`echo $item | sed 's/[-a-zA-Z0-9]*=//'`
     ;;
-    --normalize_minmax*)
+    --normalize*)
     	NORMALIZE_MINMAX="--normalize_minmax"
     ;;
-    --norm_min=*)
-    	NORM_MIN=`echo $item | sed 's/[-a-zA-Z0-9]*=//'`
+    --normmin=*)
+    	NORM_MIN=`echo $item | /bin/sed 's/[-a-zA-Z0-9]*=//'`
     ;;
-    --norm_max=*)
-    	NORM_MAX=`echo $item | sed 's/[-a-zA-Z0-9]*=//'`
+    --normmax=*)
+    	NORM_MAX=`echo $item | /bin/sed 's/[-a-zA-Z0-9]*=//'`
     ;;
-    --scale_to_abs_max*)
+    --scale-absmax*)
     	SCALE_TO_ABS_MAX="--scale_to_abs_max"
     ;;
-		--scale_to_max*)
+		--scale-max*)
     	SCALE_TO_MAX="--scale_to_max"
     ;;	
-		--zscale_stretch*)
+		--zscale*)
     	ZSCALE_STRETCH="--zscale_stretch"
     ;;
-		--zscale_contrasts*)
+		--zscale-contrasts*)
     	ZSCALE_CONTRASTS=`echo $item | sed 's/[-a-zA-Z0-9]*=//'`
     ;;
-		--clip_data*)
+		--sigmaclip*)
     	CLIP_DATA="--clip_data"
     ;;
-		--sigma_clip_low*)
+		--sigmaclip-low*)
     	SIGMA_CLIP_LOW=`echo $item | sed 's/[-a-zA-Z0-9]*=//'`
     ;;	
-    --sigma_clip_up*)
+    --sigmaclip-up*)
     	SIGMA_CLIP_UP=`echo $item | sed 's/[-a-zA-Z0-9]*=//'`
     ;;
-		--clip_chid*)
+		--sigmaclip-chid*)
     	CLIP_CHID=`echo $item | sed 's/[-a-zA-Z0-9]*=//'`
     ;;
 		--standardize*)
     	STANDARDIZE="--standardize"
     ;;
-		--img_means*)
+		--means*)
     	IMG_MEANS=`echo $item | sed 's/[-a-zA-Z0-9]*=//'`
     ;;
-		--img_sigmas*)
+		--sigmas*)
     	IMG_SIGMAS=`echo $item | sed 's/[-a-zA-Z0-9]*=//'`
     ;;	
 		
